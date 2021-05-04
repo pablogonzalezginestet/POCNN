@@ -1,6 +1,13 @@
 # PO_CNN
  A CNN approach for predicting cumulative incidence based on pseudo-observations
 
+## Requirements
+Install the following R packages: 
+
+`utils.install_packages('prodlim')`
+
+`utils.install_packages('eventglm')`
+
 ## Simulations
 
 The folder named Simulations contains the files to replicate the simulations.
