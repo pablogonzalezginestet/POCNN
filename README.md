@@ -1,2 +1,2 @@
 # PO_CNN
- A Convolutional Neural Network Approach to Survival Analysis using Pseudo-Observations
+ A CNN approach for predicting cumulative incidence based on pseudo-observations
