@@ -28,3 +28,19 @@ To train and evaluate Cox-PO-CNN :
 ```sh
 python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
 ```
+
+Common **arguments:**
+
+* `--lr`: learning rate (default = 0.0001)
+
+* `--sample_size`: sample size (default=1000)
+
+* `--nsim`: number of simulated data (default=100)
+
+* `--case`: any case/scenario considered in the paper, there are six cases (default=1)
+
+* '--data_dir': default='./dataset_cifar', help="Directory to save CIFAR10 dataset")
+
+Specific to PO and IPCW-PO:
+
+* '--po': data generation using PO or IPCW-PO, it takes 'po' or 'ipcwpo' (default='po')
