@@ -1,5 +1,5 @@
 # PO_CNN
- A CNN approach for predicting cumulative incidence based on pseudo-observations
+ A Convolutional Neural Netwok approach for predicting cumulative incidence based on pseudo-observations
 
 ![](figure/2ndstage.png)
 
@@ -11,6 +11,7 @@ Install the following R packages:
 `utils.install_packages('eventglm')`
 
 We use the functions `pseudo_coxph` from eventglm  and  `prodlim` and `jackknife` from prodlim.
+
 ## Simulations
 
 The folder named Simulations contains the files to replicate the simulations.
@@ -46,3 +47,6 @@ Common **arguments:**
 Specific to PO and IPCW-PO:
 
 * '--po': data generation using PO or IPCW-PO, it takes 'po' or 'ipcwpo' (default='po')
+
+## Real data application
+
