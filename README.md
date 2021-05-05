@@ -1,6 +1,7 @@
 # PO_CNN
  A CNN approach for predicting cumulative incidence based on pseudo-observations
 
+![](figures/2ndstage.png)
 ## Requirements
 Install the following R packages: 
 
