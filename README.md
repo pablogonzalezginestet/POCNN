@@ -27,11 +27,11 @@ Common **arguments:**
 
 * `--case`: any case/scenario considered in the paper, there are six cases (default=1)
 
-* '--data_dir': directory to save CIFAR10 dataset (default='./dataset_cifar')
+* `--data_dir`: directory to save CIFAR10 dataset (default='./dataset_cifar')
 
 Specific to PO and IPCW-PO:
 
-* '--po': data generation using PO or IPCW-PO, it takes 'po' or 'ipcwpo' (default='po')
+* `--po`: data generation using PO or IPCW-PO, it takes 'po' or 'ipcwpo' (default='po')
 
 For example:
 
@@ -63,13 +63,13 @@ python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
 
 * `--cpus_per_trial`: gpu resources to be used per trial (default=4)
 
-* '--po_cnn': 'po' or 'ipcwpo' (default='po')
+* `--po_cnn`: 'po' or 'ipcwpo' (default='po')
 
-* '--implementation': to run PO-CNN using the approach single output ('single_output') or multi output ('multi_output') (default= 'single_output')
+* `--implementation`: to run PO-CNN using the approach single output ('single_output') or multi output ('multi_output') (default= 'single_output')
 
-* '--data_dir_train': directory where the train images are stored (default = './data/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1' )
+* `--data_dir_train`: directory where the train images are stored (default = './data/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1' )
 
-* '--data_dir_test': directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
+* `--data_dir_test`: directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
 
 To train, validate and test PO-CNN single-output (default arguments) :
 ```sh
