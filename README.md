@@ -1,5 +1,5 @@
 # PO_CNN
- A Convolutional Neural Netwok approach for predicting cumulative incidence based on pseudo-observations
+## A Convolutional Neural Netwok approach for predicting cumulative incidence based on pseudo-observations
 
 ![](figure/2ndstage.png)
 
