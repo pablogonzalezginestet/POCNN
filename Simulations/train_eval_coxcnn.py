@@ -32,9 +32,27 @@ transform = transforms.Compose([
 
 
 
-class PSODataset_train(Dataset):
+class CoxDataset_train(Dataset):
     
     def __init__(self, images,clinical_data):
+        self.images = images
+        self.clinical_data = clinical_data
+        self.id_images = clinical_data['ID'] 
+    def __len__(self):
+        return len(self.id_images)
+    def __getitem__(self, idx):
+        #image = Image.open(self.clinical_data.iloc[idx,1]) # PIL image
+        ID = int(self.id_images.iloc[idx])
+        image = self.images[ID]
+        image = np.transpose(image,(2,0,1))
+        time = np.array(self.clinical_data.iloc[idx,1] ).astype(np.float32)
+        event = np.array(self.clinical_data.iloc[idx,2] ).astype(np.float32)
+                
+        return image, time, event,  ID
+        
+class CoxDataset_test(Dataset):
+    
+    def __init__(self, images,clinical_data): 
         self.images = images
         self.clinical_data = clinical_data
         self.id_images = clinical_data['ID'] 
@@ -44,38 +62,18 @@ class PSODataset_train(Dataset):
         ID = int(self.id_images.iloc[idx])
         image = self.images[ID]
         image = np.transpose(image,(2,0,1))
-        po1 = np.array(self.clinical_data.iloc[idx,1] ).astype(np.float32)
-        po2 = np.array(self.clinical_data.iloc[idx,2] ).astype(np.float32)
-        po3 = np.array(self.clinical_data.iloc[idx,3] ).astype(np.float32)
-        po4 = np.array(self.clinical_data.iloc[idx,4] ).astype(np.float32)
-        po5 = np.array(self.clinical_data.iloc[idx,5] ).astype(np.float32)        
-        return image, po1,po2,po3, po4,po5,  ID
-
-
-class Dataset_test(Dataset):
-    
-    def __init__(self, images,clinical_data): 
-        self.images = images
-        self.clinical_data = clinical_data
-        self.id_images = clinical_data['ID']        
-    def __len__(self):
-        return len(self.id_images)
-    def __getitem__(self, idx):
-        ID = int(self.id_images.iloc[idx])
-        image = self.images[ID]
-        image = np.transpose(image,(2,0,1))
-        time_point = np.array(self.clinical_data.iloc[idx,8:] ).astype(np.float32)
         time = np.array(self.clinical_data.iloc[idx,1] ).astype(np.float32)
         event = np.array(self.clinical_data.iloc[idx,2] ).astype(np.float32)
         event_1 = np.array(self.clinical_data.iloc[idx,3] ).astype(np.float32)
         event_2 = np.array(self.clinical_data.iloc[idx,4] ).astype(np.float32)
         event_3 = np.array(self.clinical_data.iloc[idx,5] ).astype(np.float32)
         event_4 = np.array(self.clinical_data.iloc[idx,6] ).astype(np.float32)
-        event_5 = np.array(self.clinical_data.iloc[idx,7] ).astype(np.float32)        
-                
+        event_5 = np.array(self.clinical_data.iloc[idx,7] ).astype(np.float32)
+        
         return image, time, event, event_1, event_2, event_3, event_4, event_5,  ID
 
-       
+        
+        
 class Resnet18_Mtl(nn.Module):
     def __init__(self, use_pretrained):
         super(Resnet18_Mtl, self).__init__()
@@ -83,24 +81,58 @@ class Resnet18_Mtl(nn.Module):
         num_ftrs = model_ft.fc.in_features
         image_modules = list(model_ft.children())[:-1]
         self.modelA = nn.Sequential(*image_modules)
-        self.fc = nn.Linear(num_ftrs  + 10, 1)           
+        self.fc = nn.Linear(num_ftrs + 10 , 1)
         
-    def forward(self, image,clin_covariates ):
+    def forward(self, image, clin_covariates ):
         x = self.modelA(image)
         x = torch.flatten(x, 1)
         x = torch.cat((x, clin_covariates), dim=1)
-        x1 = torch.tanh(self.fc(x))
-        x2 = torch.tanh(self.fc(x))
-        x3 = torch.tanh(self.fc(x))
-        x4 = torch.tanh(self.fc(x))
-        x5 = torch.tanh(self.fc(x))
-        return x1,x2,x3,x4,x5       
+        x = self.fc(x)
+        x1 = torch.tanh(x)        
+        return x1
 
+
+def make_riskset(time):
+         o = np.argsort(-time, kind="mergesort")
+         n_samples = len(time)
+         risk_set = np.zeros((n_samples, n_samples), dtype=np.bool_)
+         for i_org, i_sort in enumerate(o):
+            ti = time[i_sort]
+            k = i_org
+            while k < n_samples and ti <= time[o[k]]:
+                k += 1
+            risk_set[i_sort, o[:k]] = True       
+         return torch.from_numpy(risk_set)
+
+def logsumexp_masked(risk_scores,riskset):                     
+    risk_score_masked = torch.mul(risk_scores, riskset).float()
+    amax = torch.max(risk_score_masked, 1)[0]
+    risk_score_shift = risk_score_masked.sub(amax)
+    exp_masked = torch.mul(risk_score_shift.exp(), riskset)
+    exp_sum = torch.sum(exp_masked,1)
+    output = amax + torch.log(exp_sum)      
+    return output
+
+
+class CoxPH_Loss(torch.nn.Module):    
+    def __init__(self):
+        super(CoxPH_Loss,self).__init__()        
+    def forward(self,outputs,labels):
+        num_examples = outputs.size()[0]
+        events = labels[0]
+        riskset = labels[1]
+        if events.dtype is torch.bool:
+            events = events.type(outputs.dtype)
+        outputs_t = torch.transpose(outputs,0,1)
+        log_cumsum_h = logsumexp_masked(outputs_t, riskset)
+        neg_loss =  torch.sum(torch.mul(events, log_cumsum_h-outputs.view(-1)))/num_examples
+        return neg_loss
+
+        
 def mean_abs_error(output,label):
     return torch.mean( torch.abs(label-output) )
 
 metrics_train = {'mae': mean_abs_error}
-
 
 def roc_auc(y_preds, y_targets):
     try:
@@ -110,9 +142,9 @@ def roc_auc(y_preds, y_targets):
     y_true = y_targets
     y_pred = y_preds
     return roc_auc_score(y_true, y_pred)
-    
-    
-def train_eval_resnet_sim(dataset,clindata,lr, niter):
+	
+	
+def train_eval_resnet_sim(dataset,clindata,lr,niter):
     net = Resnet18_Mtl(use_pretrained=True)
     device = "cpu"
     if torch.cuda.is_available():
@@ -120,37 +152,34 @@ def train_eval_resnet_sim(dataset,clindata,lr, niter):
         if torch.cuda.device_count() > 1:
             net = nn.DataParallel(net)
     net.to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(net.parameters(),lr=lr)       
+    criterion = CoxPH_Loss()
+    optimizer = optim.Adam(net.parameters(),lr=lr)        
     batch_size = 2**8 # 2**8 2**9 or 2**7
-    ds_train = PSODataset_train(trainset.data,clindata['train_val'])
+    ds_train = CoxDataset_train(dataset.data,clindata['train_val'])
     trainloader = torch.utils.data.DataLoader(ds_train, batch_size=batch_size,shuffle=True)
-    for epoch in range(niter):  
+    cutoff = clindata['cutoff']
+    for epoch in range(niter):  # loop over the dataset multiple times
         running_loss = 0.0
         epoch_steps = 0
         net.train()
         for i, data in enumerate(trainloader, 0):
-            input_batch, po1_batch, po2_batch, po3_batch, po4_batch, po5_batch, slide_id_batch = data          
+            input_batch,  time_batch, event_batch,  slide_id_batch = data          
             input_batch = input_batch.to(device)
             covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID']== int(file)].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
             covariates_batch = torch.from_numpy(covariates_batch).to(device)
-            po1_batch, po2_batch, po3_batch, po4_batch, po5_batch = po1_batch.to(device), po2_batch.to(device), po3_batch.to(device), po4_batch.to(device), po5_batch.to(device)
-            # zero the parameter gradients
+            riskset = make_riskset(time_batch).float()
+            riskset = riskset.to(device)
+            event_batch = event_batch.to(device)           
             optimizer.zero_grad()
-            output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch.float(), covariates_batch )            
-            loss = criterion(output_batch1,torch.unsqueeze(po1_batch,axis=1) )
-            loss += criterion(output_batch2,torch.unsqueeze(po2_batch,axis=1)  )
-            loss += criterion(output_batch3,torch.unsqueeze(po3_batch,axis=1)  )
-            loss += criterion(output_batch4,torch.unsqueeze(po4_batch,axis=1)  )
-            loss += criterion(output_batch5,torch.unsqueeze(po5_batch,axis=1)  )
+            output_batch = net(input_batch.float(),covariates_batch)
+            loss = criterion(output_batch, [event_batch, riskset] )
             loss.backward()
-            optimizer.step()          
+            optimizer.step()
             running_loss += loss.item()
             epoch_steps += 1
             if i % 2000 == 1999:  # print every 2000 mini-batches
                 print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
                 running_loss = 0.0                 
-        # Validation loss       
         time = []
         event = []
         event_1 = []
@@ -158,73 +187,54 @@ def train_eval_resnet_sim(dataset,clindata,lr, niter):
         event_3 = []
         event_4 = []
         event_5 = []
-        slide_id =  np.array([])
-        output1 =  np.array([])
-        output2 =  np.array([])
-        output3 =  np.array([])
-        output4 =  np.array([])
-        output5 =  np.array([])
+        output =  np.array([])
+        slide_id =  np.array([])     
+        cutoff = clindata['cutoff']
         batch_size = 2**8 # 2**8 2**9 or 2**7        
-        ds_test = Dataset_test(trainset.data,clindata['test'])
+        ds_test = CoxDataset_test(dataset.data,clindata['test'])
         testloader = torch.utils.data.DataLoader(ds_test, batch_size=batch_size,shuffle=False) 
+        net.eval()
         with torch.no_grad():
-            for i,(input_batch, time_batch, event_batch, event_batch_1, event_batch_2, event_batch_3, event_batch_4, event_batch_5,  slide_id_batch) in enumerate(testloader,0):           
+            for i,(input_batch,time_batch, event_batch,event_batch_1, event_batch_2, event_batch_3, event_batch_4, event_batch_5,  slide_id_batch) in enumerate(testloader,0):           
                 input_batch = input_batch.to(device)
                 covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID']== int(file)].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
-                covariates_batch = torch.from_numpy(covariates_batch).to(device)
-                output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch.float(),covariates_batch)                
-                output_batch1 = output_batch1.data.cpu()
-                output1 = np.concatenate([output1, np.squeeze(output_batch1.detach().numpy(),axis=1)])
-                output_batch2 = output_batch2.data.cpu()
-                output2 = np.concatenate([output2, np.squeeze(output_batch2.detach().numpy(),axis=1)])
-                output_batch3 = output_batch3.data.cpu()
-                output3 = np.concatenate([output3, np.squeeze(output_batch3.detach().numpy(),axis=1)])
-                output_batch4 = output_batch4.data.cpu()
-                output4 = np.concatenate([output4, np.squeeze(output_batch4.detach().numpy(),axis=1)])
-                output_batch5 = output_batch5.data.cpu() 
-                output5 = np.concatenate([output5, np.squeeze(output_batch5.detach().numpy(),axis=1)])
-                slide_id = np.concatenate([slide_id, np.array(slide_id_batch)])           
+                covariates_batch = torch.from_numpy(covariates_batch).to(device)                                        
+                output_batch = net(input_batch.float(),covariates_batch)            
+                output_batch = output_batch.data.cpu()           
+                output = np.concatenate([output, np.squeeze(output_batch.detach().numpy(),axis=1)])                      
                 time.append(time_batch.numpy())
                 event.append(event_batch.numpy())
                 event_1.append(event_batch_1)
                 event_2.append(event_batch_2)
                 event_3.append(event_batch_3)
                 event_4.append(event_batch_4)
-                event_5.append(event_batch_5)
+                event_5.append(event_batch_5)                
         time = np.concatenate(time)
-        event = np.concatenate(event)
-        event1 = np.concatenate(event_1)
-        event2 = np.concatenate(event_2)
-        event3 = np.concatenate(event_3)
-        event4 = np.concatenate(event_4)
-        event5 = np.concatenate(event_5)            
-        auc1 = roc_auc(output1,event1)
-        auc2 = roc_auc(output2,event2)
-        auc3 = roc_auc(output3,event3)
-        auc4 = roc_auc(output4,event4)
-        auc5 = roc_auc(output5,event5)
-        auc = {'cutoff_1':auc1,'cutoff_2': auc2, 'cutoff_3': auc3, 'cutoff_4':auc4, 'cutoff_5':auc5}
+        event = np.concatenate(event)      
+        auc1 = roc_auc(output,np.concatenate(event_1))
+        auc2 = roc_auc(output,np.concatenate(event_2))
+        auc3 = roc_auc(output,np.concatenate(event_3))
+        auc4 = roc_auc(output,np.concatenate(event_4))
+        auc5 = roc_auc(output,np.concatenate(event_5))
         
     return auc1, auc2, auc3, auc4, auc5
-    
-parser = argparse.ArgumentParser()
+
+
+    parser = argparse.ArgumentParser()
 parser.add_argument('--niter', type=int, default=25)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--sample_size', type=int, default=1000)
 parser.add_argument('--nsim', type=int, default=100)
 parser.add_argument('--case', type=int, default=1, help='Any case considered in the paper') 
 parser.add_argument('--data_dir', default='./dataset_cifar', help="Directory to save CIFAR10 dataset")
-parser.add_argument('--po', default='po', help="data generation using PO or IPCW-PO")
+
 
 
             
 if __name__ == "__main__":
 
     args = parser.parse_args()
-    if args.po == 'po':
-        import data_generating.data_generating_po_multioutput as po
-    else:
-        import data_generating.data_generating_ipcwpo_multioutput as po
+    import data_generating.data_generating_cox as cox
     num_sim = args.nsim
     sample_size = args.sample_size
     cifardataset = torchvision.datasets.CIFAR10(root=args.data_dir, train=False,download=True, transform=transform)
@@ -237,7 +247,7 @@ if __name__ == "__main__":
     for i in range(num_sim):
     
         if args.case == 1:
-            clindata = po.sim_event_times_case1(cifardataset, args.sample_size)
+            clindata = sim_event_times_case1(cifardataset, args.sample_size)
         elif args.case == 2:
             clindata = sim_event_times_case2(cifardataset, args.sample_size)
         elif args.case == 3:
