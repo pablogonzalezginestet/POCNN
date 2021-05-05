@@ -23,3 +23,8 @@ To train and evaluate IPCW-PO-CNN multi-output :
 ```sh
 python train_eval_pocnn_multioutput.py --sample_size 1000 --nsim 50 --niter 25 --case 5 --po 'ipcwpo'
 ```
+
+To train and evaluate Cox-PO-CNN :
+```sh
+python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
+```
