@@ -53,3 +53,33 @@ python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
 
 ## Real data application
 
+**arguments:**
+
+* `--max_num_epochs`:  number of epochs (default=30)
+
+* `'--num_samples'`: number of times to sample from the hyperparameter space  (default=3)
+
+* `---gpus_per_trial`: gpu resources to be used per trial (default=1)
+
+* `--cpus_per_trial`: gpu resources to be used per trial (default=4)
+
+* '--po_cnn': 'po' or 'ipcwpo' (default='po')
+
+* '--implementation': to run PO-CNN using the approach single output ('single_output') or multi output ('multi_output') (default= 'single_output')
+
+* '--data_dir_train': directory where the train images are stored (default = './data/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1' )
+
+* '--data_dir_test': directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
+
+To train, validate and test PO-CNN single-output (default arguments) :
+```sh
+python train_eval_test_pocnn.py 
+```
+To train, validate and test IPCW-PO-CNN single-output (default arguments) :
+```sh
+python train_eval_test_pocnn.py --po 'ipcwpo' 
+```
+To train, validate and test PO-CNN multi-output (default arguments) :
+```sh
+python train_eval_test_pocnn.py  --implementation 'multi_output'
+```
