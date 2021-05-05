@@ -39,7 +39,7 @@ Common **arguments:**
 
 * `--case`: any case/scenario considered in the paper, there are six cases (default=1)
 
-* '--data_dir': default='./dataset_cifar', help="Directory to save CIFAR10 dataset")
+* '--data_dir': directory to save CIFAR10 dataset (default='./dataset_cifar')
 
 Specific to PO and IPCW-PO:
 
