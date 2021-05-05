@@ -219,16 +219,15 @@ def train_eval_resnet_sim(dataset,clindata,lr,niter):
         
     return auc1, auc2, auc3, auc4, auc5
 
+#################################################################################################
 
-    parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 parser.add_argument('--niter', type=int, default=25)
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--sample_size', type=int, default=1000)
 parser.add_argument('--nsim', type=int, default=100)
 parser.add_argument('--case', type=int, default=1, help='Any case considered in the paper') 
 parser.add_argument('--data_dir', default='./dataset_cifar', help="Directory to save CIFAR10 dataset")
-
-
 
             
 if __name__ == "__main__":
