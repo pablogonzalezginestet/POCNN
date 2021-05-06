@@ -52,7 +52,7 @@ python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
 
 
 ## Real data application
-The folder named real_application contains the files to run PO-CNN, IPCW-PO-CNN and Cox-CNN. The clinical data (structured data) is there in a csv format. The file clinical_data.py contains different functions to format the data corresponding to the model.
+The folder named real_data_application contains the files to run PO-CNN, IPCW-PO-CNN and Cox-CNN. The clinical data (structured data) is there in a csv format. The file clinical_data.py contains different functions to format the data corresponding to the model.
 
 **arguments:**
 
