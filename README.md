@@ -52,7 +52,7 @@ python train_eval_coxcnn.py --sample_size 1000 --nsim 50 --niter 25 --case 5
 
 
 ## Real data application
-The folder named real_data_application contains the files to run PO-CNN, IPCW-PO-CNN and Cox-CNN.
+The folder named real_data_application contains the files to run PO-CNN, IPCW-PO-CNN and Cox-CNN using the TCGA dataset based on tile's images and clinical data.
 
 The file TCGA_clinical.csv contains the clinical data (structured data). The column `Test` indicates the patients that we consider in the training set and test set.
 
