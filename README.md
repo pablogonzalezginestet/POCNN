@@ -56,9 +56,9 @@ The folder named real_data_application contains the files to run PO-CNN, IPCW-PO
 The column `Test` indicates the patients that we consider in the training set and test set.
 
 The file clinical_data.py contains different functions to format the data corresponding to the model:
-- `get_clinical_data_po` pre-processes the structured data to run PO-CNN
-- `get_clinical_data_ipcwpo` pre-processes the structured data to run IPCW-PO-CNN
-- `get_clinical_data_cox` pre-processes  the structured data to run Cox-CNN
+- `get_clinical_data_po` pre-processes the structured data to be used in PO-CNN
+- `get_clinical_data_ipcwpo` pre-processes the structured data to be used in IPCW-PO-CNN
+- `get_clinical_data_cox` pre-processes  the structured data to be used in Cox-CNN
 
 
 ### Images 
