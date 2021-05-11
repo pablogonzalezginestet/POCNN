@@ -107,7 +107,7 @@ python train_eval_test_pocnn.py  --implementation 'multi_output'
 
 * `--data_dir_test`: directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
 
-To train, validate and test Cox-CNN:
+To train, validate and test Cox-CNN using the average of per-tile's prediction as aggregation criteria (default):
 ```sh
 python train_eval_test_coxcnn.py 
 ```
