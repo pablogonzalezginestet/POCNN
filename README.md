@@ -1,4 +1,4 @@
-# PO_CNN
+# POCNN
 ## A Convolutional Neural Netwok approach for predicting cumulative incidence based on pseudo-observations
 
 ![](figure/2ndstage.png)
@@ -15,7 +15,7 @@ We use the functions `pseudo_coxph` from eventglm  and  `prodlim` and `jackknife
 ## Simulations
 
 The folder named Simulations contains the files to replicate the simulations.
-The dataset CIFAR10 will be saved in the current directory under the folder name `./dataset_cifar`. You can speficy the directory passing the argument  `--dir`
+The dataset CIFAR10 (https://www.cs.toronto.edu/~kriz/cifar.html) will be saved in the current directory under the folder name `./dataset_cifar`. You can speficy the directory passing the argument  `--dir`
 
 Common **arguments:**
 
