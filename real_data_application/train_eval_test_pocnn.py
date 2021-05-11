@@ -458,7 +458,7 @@ def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
     
            
      
-def test_accuracy_mo(net,device='cpu'):
+def test_accuracy_mo(net,data_dir_test,device='cpu'):
     pred1_ind_ave = []
     pred2_ind_ave = []
     pred3_ind_ave = []
@@ -483,7 +483,7 @@ def test_accuracy_mo(net,device='cpu'):
         output5 =  np.array([])
         slide_id =  np.array([])
         id_patient = (os.path.split(file)[-1][8:12]) 
-        foldernames = os.path.join(args.data_dir_test,id_patient)
+        foldernames = os.path.join(data_dir_test,id_patient)
         filenames_patient= os.listdir(foldernames)
         filenames_patient = [os.path.join(foldernames, f) for f in filenames_patient if f.endswith('.jpg')   ]
         dl = DataLoader(Dataset_test(filenames_patient,clindata['test'],eval_transformer),batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) 
