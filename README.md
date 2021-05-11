@@ -1,5 +1,5 @@
 # POCNN
-## A Convolutional Neural Netwok approach for predicting cumulative incidence based on pseudo-observations
+## A deep convolutional neural netwok approach for predicting cumulative incidence based on pseudo-observations
 
 ![](figure/2ndstage.png)
 
