@@ -107,4 +107,23 @@ python train_eval_test_pocnn.py  --implementation 'multi_output'
 
 * `--data_dir_test`: directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
 
+To train, validate and test Cox-CNN:
+```sh
+python train_eval_test_coxcnn.py 
+```
+**arguments:**
+
+* `--max_num_epochs`:  number of epochs (default=30)
+
+* `'--num_samples'`: number of times to sample from the hyperparameter space  (default=3)
+
+* `---gpus_per_trial`: gpu resources to be used per trial (default=1)
+
+* `--cpus_per_trial`: gpu resources to be used per trial (default=4)
+
+* `--aggregation_criteria`: 'average' or '75percentile' (default='average')
+
+* `--data_dir_train`: directory where the train images are stored (default = './data/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1' )
+
+* `--data_dir_test`: directory where the test images are stored (default = './data/test_set/Macenko_new_normed_TCGA_size_1196_stride_598_resize_1')
 
