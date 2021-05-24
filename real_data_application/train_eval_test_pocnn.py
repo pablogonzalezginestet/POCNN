@@ -586,7 +586,7 @@ if __name__ == "__main__":
     if args.po_cnn == 'po':
         clindata = df_c.get_clinical_data_po(tcga_clin, cutoff)
     else :
-        clindata = df_c.get_clinical_data_ipcwpo(df, cutoff)
+        clindata = df_c.get_clinical_data_ipcwpo(tcga_clin, cutoff)
     ####################################################
     
     config = {
