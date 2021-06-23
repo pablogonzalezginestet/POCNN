@@ -1,6 +1,8 @@
 
+# Code to create the table 1 that appears in the appendix that describe the predictors used as clinical variables in the CNN
 library(tableone)
 
+# read the final data that was preprocessed and then save as "clinical_data.csv"
 dt <- read.table("clinical_data.csv", header=TRUE, sep=",")
 
 
