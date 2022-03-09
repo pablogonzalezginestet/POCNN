@@ -1,0 +1,13 @@
+>>> test_accuracy_so(best_trained_model ,device)
+
+
+
+
+({'2_year': array([0.74928888]), '3.5_year': array([0.77185527]), '5_year': array([0.72970417]), '8_year': array([0.82211697]), '10_year': array([0.80125488])},
+
+{'2_year': array([0.72914764]), '3.5_year': array([0.74750238]), '5_year': array([0.71919083]), '8_year': array([0.81417885]), '10_year': array([0.79740369])})
+
+
+>>> model_state, optimizer_state = torch.load('/home/pablo/ray_results/pocnn_single_output_freezing/DEFAULT_71497_00000_0_lr=0.0005905_2022-01-18_00-30-23/checkpoint_29/checkpoint')
+>>> best_trained_model.load_state_dict(model_state)
+<All keys matched successfully>
