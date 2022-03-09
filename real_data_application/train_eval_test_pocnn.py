@@ -340,25 +340,46 @@ def test_accuracy_so(net,data_dir_test,device='cpu'):
 
 ###########################  Multiple Output #######################################################
     
+def set_parameter_requires_grad(model, feature_extracting):
+    if feature_extracting:
+        for param in model.parameters():
+            param.requires_grad = False
+
+
 class Resnet18_mo(nn.Module):
     def __init__(self, use_pretrained):
         super(Resnet18_mo, self).__init__()
         model_ft = models.resnet18(pretrained=use_pretrained)
-        num_ftrs = model_ft.fc.in_features
-        image_modules = list(model_ft.children())[:-1]
-        self.modelA = nn.Sequential(*image_modules)
-        self.fc = nn.Linear(num_ftrs  + 15, 1)           
+        set_parameter_requires_grad(model_ft, feature_extract)
+        num_final_in = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_final_in, 1)
+        self.vismodel = model_ft
+        self.projective1 = nn.Linear(1 + 15,1)
+        self.projective2 = nn.Linear(1 + 15,1)
+        self.projective3 = nn.Linear(1 + 15,1)
+        self.projective4 = nn.Linear(1 + 15,1)
+        self.projective5 = nn.Linear(1 + 15,1)
+        self.nonlinearity = nn.LeakyReLU(inplace=True)
         
-    def forward(self, image,clin_covariates ):
-        x = self.modelA(image)
+    def forward(self, image,clin_covariates):
+        x = self.vismodel(image)
         x = torch.flatten(x, 1)
         x = torch.cat((x, clin_covariates), dim=1)
-        x1 = torch.tanh(self.fc(x))
-        x2 = torch.tanh(self.fc(x))
-        x3 = torch.tanh(self.fc(x))
-        x4 = torch.tanh(self.fc(x))
-        x5 = torch.tanh(self.fc(x))
-        return x1,x2,x3,x4,x5
+        x1 = self.projective1(x)
+        x2 = self.projective2(x)
+        x3 = self.projective3(x)
+        x4 = self.projective4(x)
+        x5 = self.projective5(x)
+        x1 = self.nonlinearity(x1)
+        x2 = self.nonlinearity(x2)
+        x3 = self.nonlinearity(x3)
+        x4 = self.nonlinearity(x4)
+        x5 = self.nonlinearity(x5)
+                
+        return x1, x2, x3, x4, x5		
+
+
+feature_extract = True
      
 
 def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
@@ -370,7 +391,19 @@ def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
             net = nn.DataParallel(net)
     net.to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(net.parameters(),lr=config['lr'])
+    params_to_update = net.parameters()
+    print("Params to learn:")
+    if feature_extract:
+        params_to_update = []
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                params_to_update.append(param)
+                print("\t",name)
+    else:
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                print("\t",name)
+    optimizer = optim.Adam(params_to_update,lr=config['lr'])
     if checkpoint_dir:
         model_state, optimizer_state = torch.load(os.path.join(checkpoint_dir, "checkpoint"))
         net.load_state_dict(model_state)
@@ -379,10 +412,12 @@ def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
     id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['train']['ID_slide']]
     max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
     filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-    ds_train = PSODataset_train(filenames,clindata['train'],train_transformer) 
+    ds_train = PSODataset_train(filenames,clindata['train'],train_transformer)
+    train_losses = []
+    val_losses = []
     for epoch in range(30):  # loop over the dataset multiple times
         trainloader = DataLoader(ds_train,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True)       
-        running_loss = 0.0
+        train_running_loss = 0.0
         epoch_steps = 0
         net.train()
         for i, data in enumerate(trainloader, 0):
@@ -394,23 +429,21 @@ def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
             po1_batch, po2_batch, po3_batch, po4_batch, po5_batch = po1_batch.to(device), po2_batch.to(device), po3_batch.to(device), po4_batch.to(device), po5_batch.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-            output_batch = net(input_batch,covariates_batch)            
-            #loss = criterion(output_batch[:,0],torch.unsqueeze(po1_batch,axis=1) )
-            loss = criterion(output_batch[:,0],po1_batch )
-            loss += criterion(output_batch[:,1],po2_batch )
-            loss += criterion(output_batch[:,2],po3_batch )
-            loss += criterion(output_batch[:,3],po4_batch  )
-            loss += criterion(output_batch[:,4],po5_batch )
-            loss.backward()
+            output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch.float(), covariates_batch )  
+            train_loss = criterion(output_batch1,torch.unsqueeze(po1_batch,axis=1) )
+            train_loss += criterion(output_batch2,torch.unsqueeze(po2_batch,axis=1)  )
+            train_loss += criterion(output_batch3,torch.unsqueeze(po3_batch,axis=1)  )
+            train_loss += criterion(output_batch4,torch.unsqueeze(po4_batch,axis=1)  )
+            train_loss += criterion(output_batch5,torch.unsqueeze(po5_batch,axis=1)  )
+            train_loss.backward()
             optimizer.step()
             # print statistics
-            running_loss += loss.item()
-            epoch_steps += 1
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
-                running_loss = 0.0  
+            train_running_loss += train_loss.item() 
             if i == int(50000/batch_size):
-                break                
+                break
+        train_loss_epoch = train_running_loss / ( int(50000/batch_size) * batch_size ) 
+        train_losses.append(train_loss_epoch)
+        print("[%d] loss: %.3f" % (epoch + 1, train_loss_epoch))        
         # Validation loss       
         slide_id =  np.array([])
         time =  np.array([])
@@ -420,126 +453,132 @@ def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
         id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['val']['ID_slide']]
         max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
         filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-        ds_val = PSODataset_train(filenames,clindata['val'],eval_transformer)       
+        #ds_val = PSODataset_train(filenames,clindata['val'],eval_transformer)
+        ds_val = PSODataset_train(filenames,clindata['val'],train_transformer)
         valloader = DataLoader(ds_val,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True)        
         net.eval()
+        val_mae1 =  np.array([])
+        val_mae2 =  np.array([])
+        val_mae3 =  np.array([])
+        val_mae4 =  np.array([])
+        val_mae5 =  np.array([])
+        val_running_loss = 0.0
         for i, data in enumerate(valloader, 0):
             with torch.no_grad():
                 input_batch, po1_batch, po2_batch, po3_batch, po4_batch, po5_batch, slide_id_batch = data
                 input_batch = input_batch.to(device)
                 covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
                 covariates_batch = torch.from_numpy(covariates_batch).to(device)
-                #output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch,covariates_batch)     
-                output_batch = net(input_batch,covariates_batch)                
-                output_batch1 = output_batch[:,0]
-                output_batch2 = output_batch[:,1]
-                output_batch3 = output_batch[:,2]
-                output_batch4 = output_batch[:,3]
-                output_batch5 = output_batch[:,4]               
+                output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch,covariates_batch)                              
                 output_batch1 = output_batch1.data.cpu()
                 output_batch2 = output_batch2.data.cpu()
                 output_batch3 = output_batch3.data.cpu()
                 output_batch4 = output_batch4.data.cpu()
-                output_batch5 = output_batch5.data.cpu()                                                 
-                val_mae += mean_abs_error(output_batch1,po1_batch ) 
-                val_mae += mean_abs_error(output_batch2,po2_batch ) 
-                val_mae += mean_abs_error(output_batch3,po3_batch ) 
-                val_mae += mean_abs_error(output_batch4,po4_batch ) 
-                val_mae += mean_abs_error(output_batch5,po5_batch ) 
+                output_batch5 = output_batch5.data.cpu()
+                val_loss = criterion(output_batch1,torch.unsqueeze(po1_batch,axis=1) )
+                val_loss += criterion(output_batch2,torch.unsqueeze(po2_batch,axis=1)  )
+                val_loss += criterion(output_batch3,torch.unsqueeze(po3_batch,axis=1)  )
+                val_loss += criterion(output_batch4,torch.unsqueeze(po4_batch,axis=1)  )
+                val_loss += criterion(output_batch5,torch.unsqueeze(po5_batch,axis=1)  ) 
+                val_running_loss += val_loss.item()              
+                val_mae1 = np.concatenate([val_mae1, np.squeeze(abs(output_batch1-torch.unsqueeze(po1_batch,axis=1) ),axis=1)] )
+                val_mae2 = np.concatenate([val_mae2,np.squeeze(abs(output_batch2-torch.unsqueeze(po2_batch,axis=1) ),axis=1)] ) 
+                val_mae3 = np.concatenate([val_mae3,np.squeeze(abs(output_batch3-torch.unsqueeze(po3_batch,axis=1) ),axis=1)] ) 
+                val_mae4 = np.concatenate([val_mae4,np.squeeze(abs(output_batch4-torch.unsqueeze(po4_batch,axis=1) ),axis=1)] ) 
+                val_mae5 = np.concatenate([val_mae5,np.squeeze(abs(output_batch5-torch.unsqueeze(po5_batch,axis=1) ),axis=1)] )
                 val_steps += 1
                 if i == int(50000/batch_size):
                     break                
-        val_mae_ave = (val_mae / val_steps) / 5
+        val_loss_epoch = val_running_loss / ( int(50000/batch_size) * batch_size ) 
+        val_losses.append(val_loss_epoch)
+        print("[%d] val loss: %.3f" % (epoch + 1, val_loss_epoch))
+        val_mae_ave = ( np.mean(val_mae1 ) + np.mean(val_mae2 ) + np.mean(val_mae3 ) + np.mean(val_mae4 ) + np.mean(val_mae5 ) ) 
+        print("[%d] val accur : %.3f" % (epoch + 1, val_mae_ave) ) 
+        print(train_losses)
+        print( val_losses  )
         with tune.checkpoint_dir(epoch) as checkpoint_dir:
             path = os.path.join(checkpoint_dir, "checkpoint")
             torch.save((net.state_dict(), optimizer.state_dict()), path)
-        tune.report(mae_target = val_mae_ave.item())
+        tune.report( training_loss = train_loss_epoch ,validation_loss = val_loss_epoch, mae_target = val_mae_ave.item())
     print("Finished Training")
     
            
      
-def test_accuracy_mo(net,data_dir_test,device='cpu'):
-    pred1_ind_ave = []
-    pred2_ind_ave = []
-    pred3_ind_ave = []
-    pred4_ind_ave = []
-    pred5_ind_ave = []
-    pred1_ind_quant = []
-    pred2_ind_quant = []
-    pred3_ind_quant = []
-    pred4_ind_quant = []
-    pred5_ind_quant = []
-    time = []
-    event = []
-    correct = 0
-    step = 0
-    batch_size = 2**2 # 2**8 2**9 or 2**7
-    for file in clindata['slide_id_test']:
-        time_point = []
-        output1 =  np.array([])
-        output2 =  np.array([])
-        output3 =  np.array([])
-        output4 =  np.array([])
-        output5 =  np.array([])
-        slide_id =  np.array([])
-        id_patient = (os.path.split(file)[-1][8:12]) 
-        foldernames = os.path.join(data_dir_test,id_patient)
-        filenames_patient= os.listdir(foldernames)
-        filenames_patient = [os.path.join(foldernames, f) for f in filenames_patient if f.endswith('.jpg')   ]
-        dl = DataLoader(Dataset_test(filenames_patient,clindata['test'],eval_transformer),batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) 
-        with torch.no_grad():
-            for i,(input_batch ,time_batch, event_batch,  slide_id_batch) in enumerate(dl,0):           
-                input_batch = input_batch.to(device)
-                covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
-                covariates_batch = torch.from_numpy(covariates_batch).to(device)
-                #output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch,covariates_batch)                              
-                output_batch = net(input_batch,covariates_batch)                
-                output_batch1 = output_batch[:,0]
-                output_batch2 = output_batch[:,1]
-                output_batch3 = output_batch[:,2]
-                output_batch4 = output_batch[:,3]
-                output_batch5 = output_batch[:,4]
-                output_batch1 = output_batch1.data.cpu()
-                output_batch2 = output_batch2.data.cpu()
-                output_batch3 = output_batch3.data.cpu()
-                output_batch4 = output_batch4.data.cpu()
-                output_batch5 = output_batch5.data.cpu()                  
-                #output1 = np.concatenate([output1, np.squeeze(output_batch1.detach().numpy(),axis=1)])
-                output1 = np.concatenate([output1, output_batch1.detach().numpy()])
-                output2 = np.concatenate([output2, output_batch2.detach().numpy()])
-                output3 = np.concatenate([output3, output_batch3.detach().numpy()])
-                output4 = np.concatenate([output4, output_batch4.detach().numpy()])
-                output5 = np.concatenate([output5, output_batch5.detach().numpy()]) 
-                slide_id = np.concatenate([slide_id, np.array(slide_id_batch)])                
-                if i == int(10000/batch_size):
-                    break                           
-        time.append(time_batch.numpy()[0])
-        event.append(event_batch.numpy()[0])
-        pred1_ind_ave.append(np.mean(output1))    
-        pred2_ind_ave.append(np.mean(output2)) 
-        pred3_ind_ave.append(np.mean(output3)) 
-        pred4_ind_ave.append(np.mean(output4))        
-        pred5_ind_ave.append(np.mean(output5))
-        pred1_ind_quant.append(np.quantile(output1,.75))    
-        pred2_ind_quant.append(np.quantile(output2,.75)) 
-        pred3_ind_quant.append(np.quantile(output3,.75)) 
-        pred4_ind_quant.append(np.quantile(output4,.75))        
-        pred5_ind_quant.append(np.quantile(output5,.75))        
-    y_surv_test = Surv.from_arrays(event=event, time=time)
-    y_surv_train = Surv.from_arrays(event=np.squeeze(clindata['event_train'],axis=1), time=np.squeeze(clindata['time_train'],axis=1))
-    auc1 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred1_ind_ave, 730)[0]  
-    auc2 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred2_ind_ave, 1277)[0]
-    auc3 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred3_ind_ave, 1825)[0]
-    auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred4_ind_ave, 2920)[0]
-    auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred5_ind_ave, 3650)[0]
-    auc_average = {'2_year':auc1,'3.5_year': auc2, '5_year': auc3, '8_year':auc4, '10_year':auc5}   
-    auc1 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred1_ind_quant, 730)[0]  
-    auc2 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred2_ind_quant, 1277)[0]
-    auc3 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred3_ind_quant, 1825)[0]
-    auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred4_ind_quant, 2920)[0]
-    auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred5_ind_quant, 3650)[0]
-    auc_quantile = {'2_year':auc1,'3.5_year': auc2, '5_year': auc3, '8_year':auc4, '10_year':auc5}
-    return auc_average, auc_quantile    
+def test_accuracy_mo(net,device='cpu'):
+	pred1_ind_ave = []
+	pred2_ind_ave = []
+	pred3_ind_ave = []
+	pred4_ind_ave = []
+	pred5_ind_ave = []
+	pred1_ind_quant = []
+	pred2_ind_quant = []
+	pred3_ind_quant = []
+	pred4_ind_quant = []
+	pred5_ind_quant = []
+	time = []
+	event = []
+	correct = 0
+	step = 0
+	batch_size = 2**2 # 2**8 2**9 or 2**7
+	for file in clindata['slide_id_test']:
+		time_point = []
+		output1 =  np.array([])
+		output2 =  np.array([])
+		output3 =  np.array([])
+		output4 =  np.array([])
+		output5 =  np.array([])
+		slide_id =  np.array([])
+		id_patient = (os.path.split(file)[-1][8:12]) 
+		foldernames = os.path.join(args.data_dir_test,id_patient)
+		filenames_patient= os.listdir(foldernames)
+		filenames_patient = [os.path.join(foldernames, f) for f in filenames_patient if f.endswith('.jpg')   ]
+		dl = DataLoader(Dataset_test(filenames_patient,clindata['test'],eval_transformer),batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) 
+		with torch.no_grad():
+			for i,(input_batch ,time_batch, event_batch,  slide_id_batch) in enumerate(dl,0):           
+				input_batch = input_batch.to(device)
+				covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
+				covariates_batch = torch.from_numpy(covariates_batch).to(device)
+				output_batch1, output_batch2,output_batch3,output_batch4,output_batch5 = net(input_batch.float(),covariates_batch)                                              
+				output_batch1 = output_batch1.data.cpu()
+				output_batch2 = output_batch2.data.cpu()
+				output_batch3 = output_batch3.data.cpu()
+				output_batch4 = output_batch4.data.cpu()
+				output_batch5 = output_batch5.data.cpu()
+				output1 = np.concatenate([output1, np.squeeze(output_batch1.detach().numpy(),axis=1)])
+				output2 = np.concatenate([output2, np.squeeze(output_batch2.detach().numpy(),axis=1)])
+				output3 = np.concatenate([output3, np.squeeze(output_batch3.detach().numpy(),axis=1)])
+				output4 = np.concatenate([output4, np.squeeze(output_batch4.detach().numpy(),axis=1)])
+				output5 = np.concatenate([output5, np.squeeze(output_batch5.detach().numpy(),axis=1)])				 
+				slide_id = np.concatenate([slide_id, np.array(slide_id_batch)])                
+				if i == int(10000/batch_size):
+					break                           
+		time.append(time_batch.numpy()[0])
+		event.append(event_batch.numpy()[0])
+		pred1_ind_ave.append(np.mean(output1))    
+		pred2_ind_ave.append(np.mean(output2)) 
+		pred3_ind_ave.append(np.mean(output3)) 
+		pred4_ind_ave.append(np.mean(output4))        
+		pred5_ind_ave.append(np.mean(output5))
+		pred1_ind_quant.append(np.quantile(output1,.75))    
+		pred2_ind_quant.append(np.quantile(output2,.75)) 
+		pred3_ind_quant.append(np.quantile(output3,.75)) 
+		pred4_ind_quant.append(np.quantile(output4,.75))        
+		pred5_ind_quant.append(np.quantile(output5,.75))        
+	y_surv_test = Surv.from_arrays(event=event, time=time)
+	y_surv_train = Surv.from_arrays(event=np.squeeze(clindata['event_train'],axis=1), time=np.squeeze(clindata['time_train'],axis=1))
+	auc1 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred1_ind_ave, 730)[0]  
+	auc2 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred2_ind_ave, 1277)[0]
+	auc3 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred3_ind_ave, 1825)[0]
+	auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred4_ind_ave, 2920)[0]
+	auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred5_ind_ave, 3650)[0]
+	auc_average = {'2_year':auc1,'3.5_year': auc2, '5_year': auc3, '8_year':auc4, '10_year':auc5}   
+	auc1 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred1_ind_quant, 730)[0]  
+	auc2 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred2_ind_quant, 1277)[0]
+	auc3 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred3_ind_quant, 1825)[0]
+	auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred4_ind_quant, 2920)[0]
+	auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred5_ind_quant, 3650)[0]
+	auc_quantile = {'2_year':auc1,'3.5_year': auc2, '5_year': auc3, '8_year':auc4, '10_year':auc5}
+	return auc_average, auc_quantile  
     
 ##################################################################################################
     
