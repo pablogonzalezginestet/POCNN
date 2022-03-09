@@ -147,27 +147,37 @@ def mean_abs_error(output,label):
 metrics_train = {'mae': mean_abs_error}
 
 
+def set_parameter_requires_grad(model, feature_extracting):
+    if feature_extracting:
+        for param in model.parameters():
+            param.requires_grad = False
+
+
+feature_extract = True
+
 ###########################  Single Output #######################################################
 class Resnet18_so(nn.Module):
-    def __init__(self, use_pretrained):
-        super(Resnet18_so, self).__init__()
-        model_ft = models.resnet18(pretrained=use_pretrained)
-        num_ftrs = model_ft.fc.in_features
-        image_modules = list(model_ft.children())[:-1]
-        self.modelA = nn.Sequential(*image_modules)
-        self.fc = nn.Linear(num_ftrs  + 20, 1) # cov + time points
-        
-    def forward(self, image,clin_covariates ):
-        x = self.modelA(image)
-        x = torch.flatten(x, 1)
-        x = torch.cat((x, clin_covariates), dim=1)
-        x1 = self.fc(x)
-        x1 = torch.tanh(x1)        
-        
-        return x1
+	def __init__(self, use_pretrained):
+		super(Resnet18_so, self).__init__()
+		model_ft = models.resnet18(pretrained=use_pretrained)
+		set_parameter_requires_grad(model_ft, feature_extract)
+		num_final_in = model_ft.fc.in_features
+		model_ft.fc = nn.Linear(num_final_in, 1)
+		self.vismodel = model_ft
+		self.projective = nn.Linear(1 + 20,1)
+		self.nonlinearity = nn.LeakyReLU(inplace=True)
+		
+	def forward(self, image,clin_covariates):
+		x = self.vismodel(image)
+		x = torch.flatten(x, 1)
+		x = torch.cat((x, clin_covariates), dim=1)
+		x = self.projective(x)
+		x = self.nonlinearity(x)
+				
+		return x
 
 def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
-    net = Resnet18_so(use_pretrained=True)   
+    net = Resnet18_so(use_pretrained=True)    
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
@@ -175,7 +185,20 @@ def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
         net = nn.DataParallel(net)
     net.to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(net.parameters(),lr=config['lr'])
+    params_to_update = net.parameters()
+    print("Params to learn:")
+    if feature_extract:
+        params_to_update = []
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                params_to_update.append(param)
+                print("\t",name)
+    else:
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                print("\t",name)
+    optimizer = optim.Adam(params_to_update,lr=config['lr'])
+    #optimizer = optim.SGD(params_to_update, lr=0.0001, momentum=0.9)
     if checkpoint_dir:
         model_state, optimizer_state = torch.load(os.path.join(checkpoint_dir, "checkpoint"))
         net.load_state_dict(model_state)
@@ -183,8 +206,10 @@ def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
     batch_size = 2**2 # 2**8 2**9 or 2**7
     id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['train']['ID_slide']]
     max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
-    filenames = get_filenames(data_dir,id_patient, max_tiles)
-    ds_train = PSODataset_train(filenames,clindata['train'],train_transformer)  
+    filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
+    ds_train = PSODataset_train(filenames,clindata['train'],train_transformer)
+    train_losses = []
+    val_losses = []
     for epoch in range(30):  # loop over the dataset multiple times
         trainloader = DataLoader(ds_train,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) # because we use 50000 samples shuffled
         running_loss = 0.0
@@ -215,21 +240,25 @@ def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
             # print statistics
             running_loss += loss.item()
             epoch_steps += 1
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
-                running_loss = 0.0  
+            #if i % 2000 == 1999:  # print every 2000 mini-batches
+            #    print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
+            #    running_loss = 0.0  
             if i == int(50000/batch_size):
-                break                
+                break
+        train_loss_epoch = running_loss / ( int(50000/batch_size) * batch_size ) 
+        train_losses.append(train_loss_epoch)
+        print("[%d] loss: %.3f" % (epoch + 1, train_loss_epoch))                
         # Validation loss       
         slide_id =  np.array([])
         time =  np.array([])
-        val_mae = 0.0
+        val_loss = 0.0
+        val_mae = np.array([])
         val_steps = 0.0
         batch_size = 2**2 # 2**8 2**9 or 2**7
         id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['val']['ID_slide']]
         max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
         filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-        ds_val = PSODataset_train(filenames,clindata['val'],eval_transformer)       
+        ds_val = PSODataset_train(filenames,clindata['val'],train_transformer)       
         valloader = DataLoader(ds_val,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True)        
         net.eval()
         for i, data in enumerate(valloader, 0):
@@ -249,19 +278,29 @@ def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
                 time_point_batch = torch.from_numpy(np.array(po_long_batch.iloc[:,2:]).astype(np.float32)).to(device)
                 po_long_batch = torch.from_numpy(np.array(po_long_batch['ps_risk']).astype(np.float32))
                 output_batch = net(input_batch_long,torch.cat((time_point_batch, covariates_batch), 1))                
-                output_batch = output_batch.data.cpu()               
-                val_mae += mean_abs_error(output_batch,torch.unsqueeze(po_long_batch,axis=1) ) 
+                output_batch = output_batch.data.cpu()  
+                val_loss += criterion(output_batch,torch.unsqueeze(po_long_batch,axis=1)  )
+                val_mae = np.concatenate([val_mae, np.squeeze(abs(output_batch-torch.unsqueeze(po_long_batch,axis=1) ),axis=1)] )
+                #val_mae += mean_abs_error(output_batch,torch.unsqueeze(po_long_batch,axis=1) ) 
                 val_steps += 1
                 if i == int(50000/batch_size):
-                    break                
+                    break
+        val_loss_epoch = val_loss / ( int(50000/batch_size) * batch_size ) 
+        val_losses.append(val_loss_epoch)
+        val_mae_epoch = np.mean(val_mae)
+        print("[%d] val loss: %.3f" % (epoch + 1, val_loss_epoch))
+        print("[%d] val accur : %.3f" % (epoch + 1, val_mae_epoch) ) 
+        print(train_losses)
+        print( val_losses  )        
         with tune.checkpoint_dir(epoch) as checkpoint_dir:
             path = os.path.join(checkpoint_dir, "checkpoint")
             torch.save((net.state_dict(), optimizer.state_dict()), path)
-        tune.report(mae_target = (val_mae / val_steps).item())                
+        tune.report( training_loss = train_loss_epoch ,validation_loss = val_loss_epoch, mae_target = val_mae_epoch.item())
+        #tune.report(mae_target = (val_mae / val_steps).item())                
     print("Finished Training")
 
     
-def test_accuracy_so(net,data_dir_test,device='cpu'):
+def test_accuracy_so(net,device='cpu'):
     pred1_ind_ave = []
     pred2_ind_ave = []
     pred3_ind_ave = []
@@ -286,7 +325,7 @@ def test_accuracy_so(net,data_dir_test,device='cpu'):
         output5 =  np.array([])
         slide_id =  np.array([])
         id_patient = (os.path.split(file)[-1][8:12]) 
-        foldernames = os.path.join(data_dir_test,id_patient)
+        foldernames = os.path.join(args.data_dir_test,id_patient)
         filenames_patient= os.listdir(foldernames)
         filenames_patient = [os.path.join(foldernames, f) for f in filenames_patient if f.endswith('.jpg')   ]
         dl = DataLoader(Dataset_test(filenames_patient,clindata['test'],eval_transformer),batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) 
@@ -340,12 +379,6 @@ def test_accuracy_so(net,data_dir_test,device='cpu'):
 
 ###########################  Multiple Output #######################################################
     
-def set_parameter_requires_grad(model, feature_extracting):
-    if feature_extracting:
-        for param in model.parameters():
-            param.requires_grad = False
-
-
 class Resnet18_mo(nn.Module):
     def __init__(self, use_pretrained):
         super(Resnet18_mo, self).__init__()
@@ -378,8 +411,6 @@ class Resnet18_mo(nn.Module):
                 
         return x1, x2, x3, x4, x5		
 
-
-feature_extract = True
      
 
 def train_resnet_mo(config, checkpoint_dir=None, data_dir=None):
