@@ -1,0 +1,83 @@
+>>> best_checkpoint_dir
+'/home/pablo/ray_results/pocnn_multi_output_freezing_pretrained_5outputs/DEFAULT_7d1a4_00000_0_lr=7.6934e-07_2022-02-28_20-13-19/checkpoint_29/'
+>>> test_accuracy_mo(best_trained_model, device)
+
+({'2_year': array([0.78152628]), '3.5_year': array([0.53232503]), '5_year': array([0.67091199]), '8_year': array([0.77603197]), '10_year': array([0.73295052])},
+{'2_year': array([0.77699621]), '3.5_year': array([0.54012858]), '5_year': array([0.66422637]), '8_year': array([0.77951126]), '10_year': array([0.73295052])})
+
+>> best_trial = result.get_best_trial("mae_target", "min", "last")
+n>>> print("Best trial config: {}".format(best_trial.config))
+iBest trial config: {'lr': 7.693375516436919e-07}
+>>> print("Best trial final validation loss: {}".format(best_trial.last_result["mae_target"]))
+Best trial final validation loss: 1.552750377624005
+>>> best_trained_model = Resnet18_mo(use_pretrained=False)
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: -7.421928622249391
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.57 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/pocnn_multi_output_freezing_pretrained_5outputs
+Number of trials: 3/3 (1 RUNNING, 2 TERMINATED)
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                  |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_7d1a4_00002 | RUNNING    | 130.229.54.63:105492 | 4.98498e-07 |       20.1013   |         18.0823   |     13.788   |                   10 |
+| DEFAULT_7d1a4_00000 | TERMINATED |                      | 7.69338e-07 |        0.631123 |          0.791034 |      1.55275 |                   30 |
+| DEFAULT_7d1a4_00001 | TERMINATED |                      | 4.65308e-07 |       12.2872   |         11.0661   |      9.43149 |                   10 |
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: -7.421928622249391
+Resources requested: 0/24 CPUs, 0/1 GPUs, 0.0/36.57 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/pocnn_multi_output_freezing_pretrained_5outputs
+Number of trials: 3/3 (3 TERMINATED)
++---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc   |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_7d1a4_00000 | TERMINATED |       | 7.69338e-07 |        0.631123 |          0.791034 |      1.55275 |                   30 |
+| DEFAULT_7d1a4_00001 | TERMINATED |       | 4.65308e-07 |       12.2872   |         11.0661   |      9.43149 |                   10 |
+| DEFAULT_7d1a4_00002 | TERMINATED |       | 4.98498e-07 |       20.1013   |         18.0823   |     13.788   |                   10 |
+
+(pid=105527) [30] loss: 0.631
+(pid=105527) [30] val loss: 0.791
+(pid=105527) [30] val accur : 1.553
+(pid=105527) [70.43440547332764, 59.37026034790039, 48.03329797065735, 37.94666047737122, 28.784372201461792, 21.087226082954405, 14.882149671516418, 10.141459904193878, 6.580417438087464, 4.013928146324158, 2.359013506131172, 1.3925867626786232, 0.8906907657629252, 0.7340401791045069, 0.7218099013234675, 0.7000836489677429, 0.7163864282049238, 0.6994998454771936, 0.6928793327780068, 0.6864900068628788, 0.7048791702342033, 0.7078457788293063, 0.7039769463048875, 0.6951034894461929, 0.6893932210047543, 0.6952035398899019, 0.6611753798338026, 0.6458474125967175, 0.6473032492622733, 0.6311231789556145]
+(pid=105527) [63.51771520996094, 52.83146905212402, 42.386274489593504, 32.636177052116395, 24.53968345832825, 17.60808030128479, 12.346376201438904, 8.242742256259918, 5.203782549285888, 3.164160773086548, 1.9679802852392196, 1.3201225368142129, 0.9072290035277605, 0.9539558342114091, 0.8908627765640617, 0.8266191950201989, 0.8960966961540282, 0.8550817250750959, 0.8586332984179258, 0.9081212197832763, 0.83283470800668, 0.9013830586440861, 0.8529431732438505, 0.816143050931394, 0.8433666679382325, 0.8543536876924336, 0.8788968776639551, 0.8796303900726139, 0.8304056590504945, 0.7910342013325542]
+Result for DEFAULT_7d1a4_00000:
+  date: 2022-02-28_23-02-21
+  done: true
+  experiment_id: 38c82d783bca44e1bc658390e18694d6
+  experiment_tag: 0_lr=7.6934e-07
+  hostname: chime-guest-workstation
+  iterations_since_restore: 30
+  mae_target: 1.552750377624005
+  node_ip: 130.229.54.63
+  pid: 105527
+  should_checkpoint: true
+  time_since_restore: 10141.550221204758
+  time_this_iter_s: 336.23943853378296
+  time_total_s: 10141.550221204758
+  timestamp: 1646085741
+  timesteps_since_restore: 0
+  training_iteration: 30
+  training_loss: 0.6311231789556145
+  trial_id: 7d1a4_00000
+  validation_loss: 0.7910342013325542
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=1
+Bracket: Iter 10.000: -5.412371292098762
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.57 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/pocnn_multi_output_freezing_pretrained_5outputs
+Number of trials: 2/3 (1 PENDING, 1 RUNNING)
++---------------------+----------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status   | loc                  |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+----------+----------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_7d1a4_00000 | RUNNING  | 130.229.54.63:105527 | 7.69338e-07 |        0.631123 |          0.791034 |      1.55275 |                   30 |
+| DEFAULT_7d1a4_00001 | PENDING  |                      | 4.65308e-07 |                 |                   |              |                      |
++---------------------+----------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
