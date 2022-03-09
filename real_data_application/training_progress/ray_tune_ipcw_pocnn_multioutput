@@ -1,0 +1,77 @@
+>>> test_accuracy_mo(best_trained_model, device)
+
+
+({'2_year': array([0.78750959]), '3.5_year': array([0.6719896]), '5_year': array([0.6733541]), '8_year': array([0.70957301]), '10_year': array([0.82200184])}, 
+
+{'2_year': array([0.78281038]), '3.5_year': array([0.66939681]), '5_year': array([0.66675078]), '8_year': array([0.7268806]), '10_year': array([0.82200184])})
+
+From: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se> 
+Sent: den 3 februari 2022 13:45
+To: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se>
+Subject: IPCW PO CNN multioutput
+
+>>> best_trial = result.get_best_trial("mae_target", "min", "last")
+>>> best_trial
+DEFAULT_0b69b_00001
+>>>
+>>> best_checkpoint_dir = best_trial.checkpoint.value
+>>> best_checkpoint_dir
+'/home/pablo/ray_results/ipcwpocnn_multi_output_freezing_pretrained_T_5outputs/DEFAULT_0b69b_00001_1_lr=5.0106e-06_2022-02-02_20-46-11/checkpoint_29/'
+>>>
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=1
+Bracket: Iter 10.000: -2.733775283912186
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.57 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/ipcwpocnn_multi_output_freezing_pretrained_T_5outputs
+Number of trials: 3/3 (1 PENDING, 1 RUNNING, 1 TERMINATED)
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                  |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_0b69b_00001 | RUNNING    | 130.229.54.63:123539 | 5.0106e-06  |        0.880467 |           1.21852 |      1.91213 |                   29 |
+| DEFAULT_0b69b_00002 | PENDING    |                      | 1.52884e-07 |                 |                   |              |                      |
+| DEFAULT_0b69b_00000 | TERMINATED |                      | 1.40899e-07 |        1.00773  |           1.32236 |      2.36302 |                   30 |
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+(pid=123539) [30] loss: 0.869
+(pid=123539) [30] val loss: 1.204
+(pid=123539) [30] val accur : 1.918
+(pid=123539) [10.434370829725266, 1.3674992630144953, 0.9533299975377322, 0.9300023592418433, 0.9380865094017983, 0.9319685306450725, 0.9047326408858597, 0.9494907050094008, 0.9058248098871112, 0.9235170445038379, 0.9447417926712334, 0.9280937019893527, 0.9050531301774084, 0.9276410775367916, 0.9278539398661256, 0.8970590163737535, 0.9003466055192053, 0.9282085410180688, 0.9008444327899814, 0.9061217481778562, 0.8830844199699909, 0.9109171682856977, 0.8803532465986907, 0.8848616910025477, 0.8911723979020119, 0.913592437607497, 0.9116917379821837, 0.8819113441598415, 0.8804671913358569, 0.8687505396602303]
+(pid=123539) [3.32943234187603, 1.2953065971341728, 1.2582909822452069, 1.2499673238828033, 1.2609448429182173, 1.2401116139015556, 1.2319591464580595, 1.2646633382198214, 1.2497043162840604, 1.2749792211630941, 1.2460596711058916, 1.2262380950306355, 1.2497691347855329, 1.251093648698628, 1.2380301477271318, 1.2165062086455525, 1.2375885650451481, 1.2397130804064125, 1.22169280383721, 1.2295197262470423, 1.2160733032137157, 1.2440401104861498, 1.2222487204240262, 1.2203237323025613, 1.2186082288184763, 1.2208463180996478, 1.229655079254657, 1.2111733118519188, 1.2185189762206377, 1.2036347969642283]
+Result for DEFAULT_0b69b_00001:
+  date: 2022-02-03_01-16-15
+  done: true
+  experiment_id: 53fbc3e08cb248659850e11437e1a5d2
+  experiment_tag: 1_lr=5.0106e-06
+  hostname: chime-guest-workstation
+  iterations_since_restore: 30
+  mae_target: 1.917520939522071
+  node_ip: 130.229.54.63
+  pid: 123539
+  should_checkpoint: true
+  time_since_restore: 16198.595730781555
+  time_this_iter_s: 539.9948377609253
+  time_total_s: 16198.595730781555
+  timestamp: 1643847375
+  timesteps_since_restore: 0
+  training_iteration: 30
+  training_loss: 0.8687505396602303
+  trial_id: 0b69b_00001
+  validation_loss: 1.2036347969642283
+
+== Status ==
+Memory usage on this node: 14.9/62.7 GiB
+Using AsyncHyperBand: num_stopped=2
+Bracket: Iter 10.000: -2.733775283912186
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.57 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/ipcwpocnn_multi_output_freezing_pretrained_T_5outputs
+Number of trials: 3/3 (1 PENDING, 1 RUNNING, 1 TERMINATED)
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                  |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_0b69b_00001 | RUNNING    | 130.229.54.63:123539 | 5.0106e-06  |        0.868751 |           1.20363 |      1.91752 |                   30 |
+| DEFAULT_0b69b_00002 | PENDING    |                      | 1.52884e-07 |                 |                   |              |                      |
+| DEFAULT_0b69b_00000 | TERMINATED |                      | 1.40899e-07 |        1.00773  |           1.32236 |      2.36302 |                   30 |
++---------------------+------------+----------------------+-------------+-----------------+-------------------+--------------+----------------------+
