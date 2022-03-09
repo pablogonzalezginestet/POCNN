@@ -1,0 +1,84 @@
+>>> test_accuracy_quantile(best_trained_model, args.data_dir_test,device)
+
+{'2_year': array([0.71550866]), '3.5_year': array([0.694188]), '5_year': array([0.71103281]), '8_year': array([0.79821696]), '10_year': array([0.76616951])}
+
+From: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se> 
+Sent: den 10 februari 2022 13:34
+To: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se>
+Subject: Cox CNN 75th percentile
+
+
+== Status ==
+Memory usage on this node: 17.4/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: 0.7438610679393645
+Resources requested: 0/24 CPUs, 0/1 GPUs, 0.0/36.62 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/coxcnn_freezing_75percentile
+Number of trials: 3/3 (3 TERMINATED)
++---------------------+------------+-------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc   |   training_loss |   validation_loss |   auc_target |   training_iteration |
+|---------------------+------------+-------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_ba5f5_00000 | TERMINATED |       |       0.0141662 |         0.0147993 |     0.758887 |                   30 |
+| DEFAULT_ba5f5_00001 | TERMINATED |       |       0.0141486 |         0.0152275 |     0.740524 |                   30 |
+| DEFAULT_ba5f5_00002 | TERMINATED |       |       0.014273  |         0.0147775 |     0.727478 |                   10 |
++---------------------+------------+-------+-----------------+-------------------+--------------+----------------------+
+
+
+2022-02-10 01:04:56,480 INFO tune.py:439 -- Total run time: 40095.70 seconds (40094.37 seconds for the tuning loop).
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> best_trial = result.get_best_trial("auc_target", "max", "last")
+>>> best_checkpoint_dir = best_trial.checkpoint.value
+>>> best_checkpoint_dir
+'/home/pablo/ray_results/coxcnn_freezing_75percentile/DEFAULT_ba5f5_00000_0_2022-02-09_13-56-42/checkpoint_29/'
+
+
+(pid=44623) [30] loss: 0.014
+(pid=44623) [0.016146463781893255, 0.014887640268802642, 0.014879641216993332, 0.01513186915397644, 0.01457036819934845, 0.014162766649723053, 0.014185324250459671, 0.01387014262676239, 0.01425908871293068, 0.014346075121164321, 0.014152644765377045, 0.014444694771766662, 0.014753575947284698, 0.014460565620660781, 0.014443463683128356, 0.014146460144519805, 0.01411228107213974, 0.013997339787483215, 0.014341766445636749, 0.013967183408737182, 0.013820824139118195, 0.013986543184518814, 0.014079014250040054, 0.014046253199577332, 0.014190623700618745, 0.01363183332681656, 0.013916092984676361, 0.014007924594879151, 0.013608274755477906, 0.014166225197315216]
+(pid=44623) [tensor(0.0151), tensor(0.0165), tensor(0.0151), tensor(0.0148), tensor(0.0146), tensor(0.0151), tensor(0.0168), tensor(0.0160), tensor(0.0150), tensor(0.0151), tensor(0.0154), tensor(0.0149), tensor(0.0155), tensor(0.0156), tensor(0.0157), tensor(0.0148), tensor(0.0143), tensor(0.0142), tensor(0.0146), tensor(0.0156), tensor(0.0148), tensor(0.0148), tensor(0.0144), tensor(0.0145), tensor(0.0150), tensor(0.0148), tensor(0.0148), tensor(0.0152), tensor(0.0144), tensor(0.0148)]
+(pid=44623) [array([0.67756648]), array([0.66190547]), array([0.72369897]), array([0.75292327]), array([0.77761616]), array([0.71884457]), array([0.60064608]), array([0.74160429]), array([0.7248195]), array([0.73434483]), array([0.74051052]), array([0.79441728]), array([0.74716544]), array([0.72448781]), array([0.74087376]), array([0.70963257]), array([0.75051989]), array([0.80772166]), array([0.75312691]), array([0.75842706]), array([0.71130219]), array([0.74698748]), array([0.74203629]), array([0.74894987]), array([0.75211677]), array([0.75613334]), array([0.75644914]), array([0.68859076]), array([0.74331863]), array([0.75888651])]
+Result for DEFAULT_ba5f5_00000:
+  auc_target: 0.7588865056546982
+  date: 2022-02-09_18-42-46
+  done: true
+  experiment_id: 3f1a22cf93fc48e5861912b357573e30
+  experiment_tag: '0'
+  hostname: chime-guest-workstation
+  iterations_since_restore: 30
+  node_ip: 130.229.54.63
+  pid: 44623
+  should_checkpoint: true
+  time_since_restore: 17163.920568943024
+  time_this_iter_s: 572.2113020420074
+  time_total_s: 17163.920568943024
+  timestamp: 1644428566
+  timesteps_since_restore: 0
+  training_iteration: 30
+  training_loss: 0.014166225197315216
+  trial_id: ba5f5_00000
+  validation_loss: tensor(0.0148)
+
+== Status ==
+Memory usage on this node: 17.8/62.7 GiB
+Using AsyncHyperBand: num_stopped=1
+Bracket: Iter 10.000: 0.7343448284928537
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.62 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/coxcnn_freezing_75percentile
+Number of trials: 2/3 (1 PENDING, 1 RUNNING)
++---------------------+----------+---------------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status   | loc                 |   training_loss |   validation_loss |   auc_target |   training_iteration |
+|---------------------+----------+---------------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_ba5f5_00000 | RUNNING  | 130.229.54.63:44623 |       0.0141662 |         0.0147993 |     0.758887 |                   30 |
+| DEFAULT_ba5f5_00001 | PENDING  |                     |                 |                   |              |                      |
++---------------------+----------+---------------------+-----------------+-------------------+--------------+----------------------+
