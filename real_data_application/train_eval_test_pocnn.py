@@ -122,8 +122,6 @@ class Dataset_test(Dataset):
         self.filenames = pd.Series(self.filenames,name='file')
         self.id_file = pd.concat([self.slide_id, self.filenames], axis=1)
         self.clinical_data = pd.merge(left=self.id_file, right=clinical_data, how='left',left_on='ID_slide' ,right_on='ID_slide')
-        #self.filenames = list(compress(self.filenames, self.clinical_data['age_at_index'].isnull()==False))
-        #self.clinical_data = self.clinical_data[self.clinical_data['age_at_index'].isnull()==False]
         self.transform = transform
     def __len__(self):
         return len(self.filenames)
@@ -131,7 +129,6 @@ class Dataset_test(Dataset):
         #ID = self.slide_id[idx]
         image = Image.open(self.clinical_data.iloc[idx,1]) # PIL image
         image = self.transform(image)
-        #time_point = np.array(self.clinical_data.iloc[idx,4:] ).astype(np.float32)
         time = np.array(self.clinical_data.iloc[idx,2] ).astype(np.float32)
         event = np.array(self.clinical_data.iloc[idx,3] ).astype(np.float32)        
         slide_id = self.clinical_data.iloc[idx,0]
@@ -198,7 +195,6 @@ def train_resnet_so(config, checkpoint_dir=None, data_dir=None):
             if param.requires_grad == True:
                 print("\t",name)
     optimizer = optim.Adam(params_to_update,lr=config['lr'])
-    #optimizer = optim.SGD(params_to_update, lr=0.0001, momentum=0.9)
     if checkpoint_dir:
         model_state, optimizer_state = torch.load(os.path.join(checkpoint_dir, "checkpoint"))
         net.load_state_dict(model_state)
