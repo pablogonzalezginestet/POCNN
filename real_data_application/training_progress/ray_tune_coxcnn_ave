@@ -1,0 +1,74 @@
+>>> test_accuracy_ave(best_trained_model, args.data_dir_test,device)
+
+{'2_year': array([0.67598164]), '3.5_year': array([0.67106113]), '5_year': array([0.69112698]), '8_year': array([0.78891462]), '10_year': array([0.8061124])}
+
+From: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se> 
+Sent: den 9 februari 2022 12:54
+To: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se>
+Subject: CoxCNN new results with a linear FC layer without intercept
+
+== Status ==
+Memory usage on this node: 17.5/62.7 GiB
+Using AsyncHyperBand: num_stopped=1
+Bracket: Iter 10.000: 0.767123189773037
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.62 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/coxcnn_freezing
+Number of trials: 3/3 (1 PENDING, 1 RUNNING, 1 TERMINATED)
++---------------------+------------+---------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                 |          lr |   training_loss |   validation_loss |   auc_target |   training_iteration |
+|---------------------+------------+---------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_24509_00001 | RUNNING    | 130.229.54.63:34669 | 0.000984902 |       0.0140026 |         0.0148882 |     0.793501 |                   29 |
+| DEFAULT_24509_00002 | PENDING    |                     | 1.04484e-06 |                 |                   |              |                      |
+| DEFAULT_24509_00000 | TERMINATED |                     | 2.08774e-05 |       0.014856  |         0.0145437 |     0.776488 |                   30 |
++---------------------+------------+---------------------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+(pid=34669) [30] loss: 0.014
+(pid=34669) [0.016080411355048417, 0.015079804564714432, 0.014619487200975417, 0.014160552562475205, 0.01469309649825096, 0.014306622936725617, 0.014087159839868546, 0.014161446701288223, 0.014352475733757019, 0.01430278342962265, 0.014265339064598084, 0.013918436543941497, 0.01407381280183792, 0.014265799577236175, 0.014382140717506408, 0.014073713176250459, 0.014246873035430908, 0.014306383303403855, 0.014039035229682922, 0.014337135304212571, 0.014199639101028443, 0.014031156663894654, 0.013973801388740539, 0.014208714542388916, 0.01387886290550232, 0.013687969336509705, 0.013814276340007783, 0.013623714046478271, 0.014002623978853226, 0.01405837702035904]
+(pid=34669) [tensor(0.0149), tensor(0.0154), tensor(0.0155), tensor(0.0142), tensor(0.0145), tensor(0.0144), tensor(0.0140), tensor(0.0159), tensor(0.0154), tensor(0.0141), tensor(0.0143), tensor(0.0154), tensor(0.0165), tensor(0.0155), tensor(0.0152), tensor(0.0150), tensor(0.0156), tensor(0.0161), tensor(0.0148), tensor(0.0149), tensor(0.0152), tensor(0.0143), tensor(0.0143), tensor(0.0137), tensor(0.0149), tensor(0.0145), tensor(0.0151), tensor(0.0146), tensor(0.0149), tensor(0.0149)]
+(pid=34669) [array([0.7683415]), array([0.70777076]), array([0.69914367]), array([0.79248393]), array([0.77096872]), array([0.76254214]), array([0.79170073]), array([0.71923445]), array([0.74627221]), array([0.77756847]), array([0.77870125]), array([0.71714841]), array([0.68160176]), array([0.72270456]), array([0.74786257]), array([0.77954061]), array([0.76412481]), array([0.70321845]), array([0.75813328]), array([0.74121671]), array([0.75353542]), array([0.77489286]), array([0.76591781]), array([0.78789305]), array([0.7686818]), array([0.75986271]), array([0.73998492]), array([0.78130195]), array([0.79350121]), array([0.79709191])]
+Result for DEFAULT_24509_00001:
+  auc_target: 0.797091907153911
+  date: 2022-02-08_23-17-53
+  done: true
+  experiment_id: 6d6a365e466940038e2ce21d0ecf25e4
+  experiment_tag: 1_lr=0.0009849
+  hostname: chime-guest-workstation
+  iterations_since_restore: 30
+  node_ip: 130.229.54.63
+  pid: 34669
+  should_checkpoint: true
+  time_since_restore: 17140.37483882904
+  time_this_iter_s: 571.8813045024872
+  time_total_s: 17140.37483882904
+  timestamp: 1644358673
+  timesteps_since_restore: 0
+  training_iteration: 30
+  training_loss: 0.01405837702035904
+  trial_id: '24509_00001'
+  validation_loss: tensor(0.0149)
+
+== Status ==
+Memory usage on this node: 17.3/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: 0.7566779092859873
+Resources requested: 0/24 CPUs, 0/1 GPUs, 0.0/36.62 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/coxcnn_freezing
+Number of trials: 3/3 (3 TERMINATED)
++---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc   |          lr |   training_loss |   validation_loss |   auc_target |   training_iteration |
+|---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_24509_00000 | TERMINATED |       | 2.08774e-05 |       0.014856  |         0.0145437 |     0.776488 |                   30 |
+| DEFAULT_24509_00001 | TERMINATED |       | 0.000984902 |       0.0140584 |         0.0148883 |     0.797092 |                   30 |
+| DEFAULT_24509_00002 | TERMINATED |       | 1.04484e-06 |       0.0537652 |         0.053583  |     0.265541 |                   10 |
++---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+2022-02-09 00:53:39,579 INFO tune.py:439 -- Total run time: 40027.59 seconds (40023.94 seconds for the tuning loop).
+>>>
+>>>
+>>> best_trial = result.get_best_trial("auc_target", "max", "last")
+>>> best_checkpoint_dir = best_trial.checkpoint.value
+>>> best_checkpoint_dir
+'/home/pablo/ray_results/coxcnn_freezing/DEFAULT_24509_00001_1_lr=0.0009849_2022-02-08_18-32-07/checkpoint_29/'
+>>>
