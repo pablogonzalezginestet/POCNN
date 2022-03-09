@@ -1,0 +1,91 @@
+>>> best_checkpoint_dir
+'/home/pablo/ray_results/ipcwpocnn_single_output_freezing/DEFAULT_74e2e_00002_2_lr=1.8296e-05_2022-02-06_03-09-19/checkpoint_29/'
+>>>
+>>> test_accuracy_so(best_trained_model, device)
+
+({'2_year': array([0.73582787]), '3.5_year': array([0.73144372]), '5_year': array([0.71982425]), '8_year': array([0.831773]), '10_year': array([0.79258892])}, 
+
+{'2_year': array([0.73187355]), '3.5_year': array([0.72626563]), '5_year': array([0.73579273]), '8_year': array([0.83704701]), '10_year': array([0.79979833])})
+
+From: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se> 
+Sent: den 7 februari 2022 12:19
+To: Pablo Gonzalez Ginestet <pablo.gonzalez.ginestet@ki.se>
+Subject: IPCW POCNN single output
+
+
+
+== Status ==
+Memory usage on this node: 14.9/62.7 GiB
+Using AsyncHyperBand: num_stopped=2
+Bracket: Iter 10.000: -0.42555340239456163
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.52 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/ipcwpocnn_single_output_freezing
+Number of trials: 3/3 (1 RUNNING, 2 TERMINATED)
++---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_74e2e_00002 | RUNNING    | 130.229.54.63:3089 | 1.82963e-05 |        0.1729   |          0.243345 |     0.375569 |                   29 |
+| DEFAULT_74e2e_00000 | TERMINATED |                    | 1.12403e-07 |        2.69446  |          2.50242  |     2.9119   |                   30 |
+| DEFAULT_74e2e_00001 | TERMINATED |                    | 7.18905e-07 |        0.193621 |          0.262814 |     0.460821 |                   30 |
++---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+(pid=3089) [30] loss: 0.176
+(pid=3089) [30] val loss: 0.241
+(pid=3089) [30] val accur : 0.382
+(pid=3089) [1.0483430864033103, 0.18372173064820468, 0.1928982099466026, 0.19416019131656737, 0.18488552734423427, 0.18300341648021712, 0.1867783044761047, 0.17902997670907528, 0.18059743901647626, 0.1804288845131919, 0.17744528245597146, 0.1786745115233492, 0.17737032420155593, 0.17401382913221605, 0.17383855644824914, 0.1729264081311226, 0.1734777938343305, 0.17048772624209524, 0.16990679595720953, 0.17165491618945264, 0.16712895716687665, 0.17423592035594862, 0.16899225365550724, 0.17343182185324374, 0.1720576052712556, 0.17126864513369744, 0.17509705881987467, 0.1748977101138537, 0.17289963339627953, 0.1758215401585214]
+(pid=3089) [tensor(0.2555), tensor(0.2532), tensor(0.2502), tensor(0.2483), tensor(0.2449), tensor(0.2543), tensor(0.2460), tensor(0.2397), tensor(0.2432), tensor(0.2351), tensor(0.2398), tensor(0.2343), tensor(0.2382), tensor(0.2373), tensor(0.2463), tensor(0.2407), tensor(0.2442), tensor(0.2452), tensor(0.2457), tensor(0.2371), tensor(0.2445), tensor(0.2440), tensor(0.2422), tensor(0.2419), tensor(0.2439), tensor(0.2393), tensor(0.2426), tensor(0.2390), tensor(0.2433), tensor(0.2414)]
+Result for DEFAULT_74e2e_00002:
+  date: 2022-02-07_07-24-19
+  done: true
+  experiment_id: 9808f095e7b840b49896f1c0e66ee378
+  experiment_tag: 2_lr=1.8296e-05
+  hostname: chime-guest-workstation
+  iterations_since_restore: 30
+  mae_target: 0.3819244752501437
+  node_ip: 130.229.54.63
+  pid: 3089
+  should_checkpoint: true
+  time_since_restore: 101695.02062177658
+  time_this_iter_s: 3408.5458500385284
+  time_total_s: 101695.02062177658
+  timestamp: 1644215059
+  timesteps_since_restore: 0
+  training_iteration: 30
+  training_loss: 0.1758215401585214
+  trial_id: 74e2e_00002
+  validation_loss: tensor(0.2414)
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: -0.42555340239456163
+Resources requested: 4/24 CPUs, 1/1 GPUs, 0.0/36.52 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/ipcwpocnn_single_output_freezing
+Number of trials: 3/3 (1 RUNNING, 2 TERMINATED)
++---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc                |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_74e2e_00002 | RUNNING    | 130.229.54.63:3089 | 1.82963e-05 |        0.175822 |          0.24143  |     0.381924 |                   30 |
+| DEFAULT_74e2e_00000 | TERMINATED |                    | 1.12403e-07 |        2.69446  |          2.50242  |     2.9119   |                   30 |
+| DEFAULT_74e2e_00001 | TERMINATED |                    | 7.18905e-07 |        0.193621 |          0.262814 |     0.460821 |                   30 |
++---------------------+------------+--------------------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+== Status ==
+Memory usage on this node: 15.0/62.7 GiB
+Using AsyncHyperBand: num_stopped=3
+Bracket: Iter 10.000: -0.42555340239456163
+Resources requested: 0/24 CPUs, 0/1 GPUs, 0.0/36.52 GiB heap, 0.0/12.6 GiB objects (0/1.0 accelerator_type:GTX)
+Result logdir: /home/pablo/ray_results/ipcwpocnn_single_output_freezing
+Number of trials: 3/3 (3 TERMINATED)
++---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------+
+| Trial name          | status     | loc   |          lr |   training_loss |   validation_loss |   mae_target |   training_iteration |
+|---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------|
+| DEFAULT_74e2e_00000 | TERMINATED |       | 1.12403e-07 |        2.69446  |          2.50242  |     2.9119   |                   30 |
+| DEFAULT_74e2e_00001 | TERMINATED |       | 7.18905e-07 |        0.193621 |          0.262814 |     0.460821 |                   30 |
+| DEFAULT_74e2e_00002 | TERMINATED |       | 1.82963e-05 |        0.175822 |          0.24143  |     0.381924 |                   30 |
++---------------------+------------+-------+-------------+-----------------+-------------------+--------------+----------------------+
+
+
+2022-02-07 07:24:23,455 INFO tune.py:439 -- Total run time: 305002.03 seconds (304996.88 seconds for the tuning loop).
