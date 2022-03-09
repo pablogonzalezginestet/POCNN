@@ -99,23 +99,32 @@ class CoxDataset(Dataset):
                 
         return image,time, event,  slide_id
         
-class Resnet18(nn.Module):
-    def __init__(self, use_pretrained):
-        super(Resnet18, self).__init__()
-        model_ft = models.resnet18(pretrained=use_pretrained)
-        num_ftrs = model_ft.fc.in_features
-        image_modules = list(model_ft.children())[:-1]
-        self.modelA = nn.Sequential(*image_modules)
-        self.fc = nn.Linear(num_ftrs  + 15, 1) # cov 
+def set_parameter_requires_grad(model, feature_extracting):
+    if feature_extracting:
+        for param in model.parameters():
+            param.requires_grad = False
+
+# in Cox, the last FC layer outputs a prediction risk beta*X without bias term
+class Resnet18_cox(nn.Module):
+	def __init__(self, use_pretrained):
+		super(Resnet18_cox, self).__init__()
+		model_ft = models.resnet18(pretrained=use_pretrained)
+		set_parameter_requires_grad(model_ft, feature_extract)
+		num_final_in = model_ft.fc.in_features
+		model_ft.fc = nn.Linear(num_final_in, 1)
+		self.vismodel = model_ft
+		self.projective = nn.Linear(1 + 15,1,bias=False)
+		#self.nonlinearity = nn.LeakyReLU(inplace=True)
+		
+	def forward(self, image,clin_covariates):
+		x = self.vismodel(image)
+		x = torch.flatten(x, 1)
+		x = torch.cat((x, clin_covariates), dim=1)
+		x = self.projective(x)
+		#x = self.nonlinearity(x)
+				
+		return x
         
-    def forward(self, image,clin_covariates ):
-        x = self.modelA(image)
-        x = torch.flatten(x, 1)
-        x = torch.cat((x, clin_covariates), dim=1)
-        x1 = self.fc(x)
-        x1 = torch.tanh(x1)        
-        
-        return x1
         
 #COX 
 #time must be order in descending time
@@ -143,7 +152,7 @@ def logsumexp_masked(risk_scores,
     exp_sum = torch.sum(exp_masked,1)
     output = amax + torch.log(exp_sum)      
     return output
-
+ 
 
 class CoxPH_Loss(torch.nn.Module):    
     def __init__(self):
@@ -157,17 +166,30 @@ class CoxPH_Loss(torch.nn.Module):
         outputs_t = torch.transpose(outputs,0,1)
         log_cumsum_h = logsumexp_masked(outputs_t, riskset)
         neg_loss =  torch.sum(torch.mul(events, log_cumsum_h-outputs.view(-1)))/num_examples
-        return neg_loss
+        return neg_loss        
 
+feature_extract = True
 ########################  Using the aggregation criteria Average   ####################################################      
 
-def train_resnet_cox(config, checkpoint_dir=None, data_dir=None):
-    net = Resnet18(use_pretrained=True)
+def train_resnet_cox_ave(config, checkpoint_dir=None, data_dir=None):
+    net = Resnet18_cox(use_pretrained=True)
     if torch.cuda.is_available():
         device = "cuda"  
     net.to(device)
     criterion = CoxPH_Loss()
-    optimizer = optim.Adam(net.parameters(),lr=config['lr'])
+    params_to_update = net.parameters()
+    print("Params to learn:")
+    if feature_extract:
+        params_to_update = []
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                params_to_update.append(param)
+                print("\t",name)
+    else:
+        for name,param in net.named_parameters():
+            if param.requires_grad == True:
+                print("\t",name)
+    optimizer = optim.Adam(params_to_update,lr=config['lr'])
     if checkpoint_dir:
         model_state, optimizer_state = torch.load(os.path.join(checkpoint_dir, "checkpoint"))
         net.load_state_dict(model_state)
@@ -176,7 +198,10 @@ def train_resnet_cox(config, checkpoint_dir=None, data_dir=None):
     id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['train']['ID_slide']]
     max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
     filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-    ds = CoxDataset(filenames,clindata['train'],train_transformer)  
+    ds = CoxDataset(filenames,clindata['train'],train_transformer)
+    train_losses = []
+    val_losses = []
+    AUC = []    
     for epoch in range(30):  # loop over the dataset multiple times
         trainloader = DataLoader(ds,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) # because we use 50000 samples shuffled
         running_loss = 0.0
@@ -199,23 +224,27 @@ def train_resnet_cox(config, checkpoint_dir=None, data_dir=None):
             # print statistics
             running_loss += loss.item()
             epoch_steps += 1
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
-                running_loss = 0.0
+            #if i % 2000 == 1999:  # print every 2000 mini-batches
+            #    print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
+            #    running_loss = 0.0
             if i == int(50000/batch_size):
                 break                
+        train_loss_epoch = running_loss / ( int(50000/batch_size) * batch_size ) 
+        train_losses.append(train_loss_epoch)
+        print("[%d] loss: %.3f" % (epoch + 1, train_loss_epoch)) 
         # Validation loss       
         slide_id =  np.array([])
         time =  np.array([])
         event = np.array([])
         output =  np.array([])
+        val_loss = 0.0
         val_mae = 0.0
         val_steps = 0.0
         batch_size = 2**2 # 2**8 2**9 or 2**7
         id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['val']['ID_slide']]
         max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
         filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-        ds_val = CoxDataset(filenames,clindata['val'],eval_transformer)       
+        ds_val = CoxDataset(filenames,clindata['val'],train_transformer)       
         valloader = DataLoader(ds_val,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True)        
         net.eval()
         for i, data in enumerate(valloader, 0):
@@ -224,15 +253,21 @@ def train_resnet_cox(config, checkpoint_dir=None, data_dir=None):
                 input_batch = input_batch.to(device)
                 covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
                 covariates_batch = torch.from_numpy(covariates_batch).to(device)
+                riskset = make_riskset(time_batch)
+                #riskset = riskset.to(device)
+                #event_batch = event_batch.to(device)
                 slide_id = np.concatenate([slide_id, slide_id_batch])
                 time = np.concatenate([time, time_batch])
                 event = np.concatenate([event, event_batch])
-                output_batch = net(input_batch, covariates_batch)                
-                output_batch = output_batch.data.cpu() 
+                output_batch = net(input_batch, covariates_batch)               
+                output_batch = output_batch.data.cpu()
+                val_loss += criterion(output_batch, [event_batch, riskset] )                 
                 output = np.concatenate([output, np.squeeze(output_batch.detach().numpy(),axis=1)])                
                 val_steps += 1
                 if i == int(50000/batch_size):
                     break
+        val_loss_epoch = val_loss / ( int(50000/batch_size) * batch_size ) 
+        val_losses.append(val_loss_epoch)
         pred_ind = []
         time_r = []
         event_r = []
@@ -248,10 +283,14 @@ def train_resnet_cox(config, checkpoint_dir=None, data_dir=None):
         auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 2920)[0]
         auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 3650)[0]
         auc = (auc1 + auc2 + auc3 + auc4 + auc5) / 5
+        AUC.append(auc)
+        print(train_losses)
+        print( val_losses  )
+        print( AUC )
         with tune.checkpoint_dir(epoch) as checkpoint_dir:
             path = os.path.join(checkpoint_dir, "checkpoint")
             torch.save((net.state_dict(), optimizer.state_dict()), path)
-        tune.report(auc_target = auc.item())                
+        tune.report(training_loss = train_loss_epoch ,validation_loss = val_loss_epoch, auc_target = auc.item())                
     print("Finished Training")
 
 
@@ -296,97 +335,7 @@ def test_accuracy(net,data_dir_test,device='cpu'):
 
 ##################################### Using the aggregation criteria 75th percentile  ####################################################################################################
 
-def train_resnet_quantile(config, checkpoint_dir=None, data_dir=None):
-    net = Resnet18(use_pretrained=True)
-    if torch.cuda.is_available():
-        device = "cuda"  
-    net.to(device)
-    criterion = CoxPH_Loss()
-    optimizer = optim.Adam(net.parameters(),lr=config['lr'])
-    if checkpoint_dir:
-        model_state, optimizer_state = torch.load(os.path.join(checkpoint_dir, "checkpoint"))
-        net.load_state_dict(model_state)
-        optimizer.load_state_dict(optimizer_state)        
-    batch_size = 2**4 # 2**8 2**9 or 2**7
-    id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['train']['ID_slide']]
-    max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
-    filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-    ds = CoxDataset(filenames,clindata['train'],train_transformer)  
-    for epoch in range(30):  # loop over the dataset multiple times
-        trainloader = DataLoader(ds,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True) # because we use 50000 samples shuffled
-        running_loss = 0.0
-        epoch_steps = 0
-        net.train()
-        for i, data in enumerate(trainloader, 0):
-            input_batch, time_batch, event_batch,  slide_id_batch = data          
-            input_batch = input_batch.to(device)
-            covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
-            covariates_batch = torch.from_numpy(covariates_batch).to(device)
-            riskset = make_riskset(time_batch)
-            riskset = riskset.to(device)
-            event_batch = event_batch.to(device)
-            optimizer.zero_grad()
-            output_batch = net(input_batch, covariates_batch)
-            loss = criterion(output_batch, [event_batch, riskset] )
-            loss.backward()
-            optimizer.step()
-            # print statistics
-            running_loss += loss.item()
-            epoch_steps += 1
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1,running_loss / epoch_steps))
-                running_loss = 0.0
-            if i == int(50000/batch_size):
-                break                
-        # Validation loss       
-        slide_id =  np.array([])
-        time =  np.array([])
-        event = np.array([])
-        output =  np.array([])
-        val_mae = 0.0
-        val_steps = 0.0
-        batch_size = 2**2 # 2**8 2**9 or 2**7
-        id_patient = [(os.path.split(filename)[-1][8:12]) for filename in clindata['val']['ID_slide']]
-        max_tiles = np.max(how_many_tiles(args.data_dir_train,id_patient))
-        filenames = get_filenames(args.data_dir_train,id_patient, max_tiles)
-        ds_val = CoxDataset(filenames,clindata['val'],eval_transformer)       
-        valloader = DataLoader(ds_val,batch_size=batch_size,shuffle=True, num_workers=4,pin_memory=True)        
-        net.eval()
-        for i, data in enumerate(valloader, 0):
-            with torch.no_grad():
-                input_batch, time_batch, event_batch,  slide_id_batch = data
-                input_batch = input_batch.to(device)
-                covariates_batch = np.concatenate([np.array(clindata['covariates'][clindata['covariates']['ID_slide']== file].iloc[:,1:]).astype(np.float32) for file in slide_id_batch])            
-                covariates_batch = torch.from_numpy(covariates_batch).to(device)
-                slide_id = np.concatenate([slide_id, slide_id_batch])
-                time = np.concatenate([time, time_batch])
-                event = np.concatenate([event, event_batch])
-                output_batch = net(input_batch, covariates_batch)                
-                output_batch = output_batch.data.cpu() 
-                output = np.concatenate([output, np.squeeze(output_batch.detach().numpy(),axis=1)])                
-                val_steps += 1
-                if i == int(50000/batch_size):
-                    break
-        pred_ind = []
-        time_r = []
-        event_r = []
-        for file in list(set(slide_id)):
-            time_r.append( np.array(clindata['val']['time_to_event'][clindata['val']['ID_slide']== file ]) )
-            event_r.append(np.array( clindata['val']['event'][clindata['val']['ID_slide']== file ])  )    
-            pred_ind.append(np.quantile(output[np.array(slide_id)== file],.75))    
-        y_surv_test = Surv.from_arrays(event=np.concatenate(event_r), time=np.concatenate(time_r))
-        y_surv_train = Surv.from_arrays(event= np.array(clindata['train']['event'])  , time= np.array(clindata['train']['time_to_event'])  )
-        auc1 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 730)[0]  
-        auc2 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 1277)[0]
-        auc3 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 1825)[0]
-        auc4 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 2920)[0]
-        auc5 = cumulative_dynamic_auc( y_surv_train, y_surv_test, pred_ind, 3650)[0]
-        auc = (auc1 + auc2 + auc3 + auc4 + auc5) / 5
-        with tune.checkpoint_dir(epoch) as checkpoint_dir:
-            path = os.path.join(checkpoint_dir, "checkpoint")
-            torch.save((net.state_dict(), optimizer.state_dict()), path)
-        tune.report(auc_target = auc.item())                
-    print("Finished Training")
+
 
 
 
@@ -486,7 +435,7 @@ if __name__ == "__main__":
         reporter = CLIReporter(
             metric_columns=["auc_target", "training_iteration"])
         result = tune.run(
-            partial(train_resnet, data_dir=args.data_dir_train),
+            partial(train_resnet_cox_ave, data_dir=args.data_dir_train),
             resources_per_trial={"cpu": args.cpus_per_trial, "gpu": args.gpus_per_trial},
             config=config,
             num_samples= args.num_samples,
@@ -518,7 +467,7 @@ if __name__ == "__main__":
         reporter = CLIReporter(
             metric_columns=["auc_target", "training_iteration"])
         result = tune.run(
-            partial(train_resnet_quantile, data_dir=args.data_dir_train),
+            partial(train_resnet_cox_quantile, data_dir=args.data_dir_train),
             resources_per_trial={"cpu": args.cpus_per_trial, "gpu": args.gpus_per_trial},
             config=config,
             num_samples= args.num_samples,
